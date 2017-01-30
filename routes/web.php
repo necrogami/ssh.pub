@@ -35,6 +35,5 @@ Route::group(['prefix' => 'key/{email}'], function () {
         Route::get('upload', 'KeyController@getUpload');
         Route::get('install', 'KeyController@getInstall');
         Route::get('fingerprint', 'KeyController@getFingerprint');
-
     });
 });
