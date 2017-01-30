@@ -22,12 +22,6 @@ Route::get('/', function () {
     return redirect('https://github.com/necrogami/ssh.pub');
 });
 
-Route::get('/test', function () {
-    dd(url()->full());
-    $aws = new \App\Aws;
-    dd($aws->lookup_key('a@c4.io'));
-});
-
 Route::group(['prefix' => 'key/{email}'], function () {
 
 
@@ -87,7 +81,6 @@ Route::group(['prefix' => 'key/{email}'], function () {
     // /key/user@domain.tld/all
     Route::get('all', function ($email) {
         $aws = new \App\Aws;
-//        dd($aws->list_keys($email));
         foreach($aws->lookup_keys($email) as $key) {
             echo $aws->lookup_key($email, $key);
         }
@@ -130,7 +123,6 @@ Route::group(['prefix' => 'key/{email}'], function () {
             Storage::delete('keys'.$token.'.json');
             die('Token Expired');
         }
-        // dd($data);
         switch ($data->action) {
             case 'upload_key':
                 $aws->upload_key($data->email, $data->keyname, $data->key);
