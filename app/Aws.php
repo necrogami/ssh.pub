@@ -76,7 +76,7 @@ class Aws
             die();
         }
 
-        return (string) $result['Body'];
+        return ['key' => $result['Body'], 'keyname' => $name];
     }
 
     /**

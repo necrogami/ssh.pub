@@ -20,7 +20,7 @@ class KeyController extends Controller
      */
     public function getIndex ($email, $keyname = 'default') {
         $aws = new \App\Aws;
-        return (string) $aws->lookup_key($email, $keyname);
+        return (string) $aws->lookup_key($email, $keyname)['key'];
     }
 
     /**
@@ -36,7 +36,12 @@ class KeyController extends Controller
         $data['email'] = $email;
         $data['keyname'] = $keyname;
         $data['expires'] = Carbon::now()->addHour();
-        $data['key'] = file_get_contents($request->file('key')->path());
+        $fileData = file_get_contents($request->file('key')->path());
+        $fileData = trim($fileData);
+        if (!in_array(substr($fileData, 0, 7), ['ssh-rsa', 'ssh-dss'], true)) {
+            return $fileData;
+        }
+        $data['key'] = $fileData;
         $json_data = json_encode($data);
         Storage::put('keys/'.$token.'.json', $json_data);
         $bob = new Confirm($data['action'], url('/key'), $email, $token);
@@ -94,7 +99,7 @@ class KeyController extends Controller
     public function getAll ($email) {
         $aws = new \App\Aws;
         foreach($aws->lookup_keys($email) as $key) {
-            echo $aws->lookup_key($email, $key);
+            echo $aws->lookup_key($email, $key)['key'];
         }
     }
 
@@ -120,7 +125,7 @@ class KeyController extends Controller
      */
     public function getFingerprint ($email, $keyname = 'default') {
         $aws = new \App\Aws;
-        $key = $aws->lookup_key($email, $keyname);
+        $key = $aws->lookup_key($email, $keyname)['key'];
         $cleanedKey = preg_replace('/^(ssh-[dr]s[as]\s+)|(\s+.+)|\n/', '', trim($key));
         $buffer = base64_decode($cleanedKey);
         $hash = md5($buffer);
