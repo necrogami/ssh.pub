@@ -14,7 +14,7 @@ Upload your other named key SSH key:
 
     curl -s https://ssh.pub/key/<email>/<namedkey>/upload?keypath=/path/to/key.pub | bash
 
-Install your nameed key into authorized_keys:
+Install your named key into authorized_keys:
 
     curl -s https://ssh.pub/key/<email>/<namedkey>/install | bash
 
