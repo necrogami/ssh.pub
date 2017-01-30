@@ -1,5 +1,7 @@
 # ssh.pub
 
+This is a tool for managing public ssh keys. To make it easier to store, manage and install public ssh keys.
+
 Bash
 ----
 Upload your default SSH key:
@@ -34,11 +36,3 @@ URLS
     https://ssh.pub/key/<email>/<namedkey>/install
     https://ssh.pub/key/<email>/<namedkey>/upload
 
-Contributing
-------------
-You will need to create a new S3 bucket
-
-Either clone this repository or fork and clone, then install dependencies
-
-    git clone git@github.com:necrogami/ssh.pub.git
-    composer install
