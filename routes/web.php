@@ -108,7 +108,12 @@ Route::group(['prefix' => 'key/{email}'], function () {
 
     Route::get('fingerprint', function ($email) {
         $aws = new \App\Aws;
-        return (string) $aws->lookup_key($email);
+        $key = $aws->lookup_key($email);
+        $cleanedKey = preg_replace('/^(ssh-[dr]s[as]\s+)|(\s+.+)|\n/', '', trim($key));
+        $buffer = base64_decode($cleanedKey);
+        $hash = md5($buffer);
+
+        return preg_replace('/(.{2})(?=.)/', '$1:', $hash);
     });
 
 
@@ -203,7 +208,12 @@ Route::group(['prefix' => 'key/{email}'], function () {
         // /key/user@domain.tld/namedkey/fingerprint
         Route::get('fingerprint ', function ($email, $keyname) {
             $aws = new \App\Aws;
-            return (string) $aws->lookup_key($email, $keyname);
+            $key = $aws->lookup_key($email, $keyname);
+            $cleanedKey = preg_replace('/^(ssh-[dr]s[as]\s+)|(\s+.+)|\n/', '', trim($key));
+            $buffer = base64_decode($cleanedKey);
+            $hash = md5($buffer);
+
+            return preg_replace('/(.{2})(?=.)/', '$1:', $hash);
         });
     });
 
