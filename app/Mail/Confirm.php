@@ -38,6 +38,5 @@ class Confirm extends Mailable
                 'email' => $this->email,
                 'token' => $this->token
             ]);
-//        return $this->view('view.name');
     }
 }

@@ -6,17 +6,26 @@ use AWS as SDK;
 use Aws\S3\Exception\S3Exception;
 
 /**
-*    
-*/
+ * Class Aws
+ * @package App
+ */
 class Aws
 {
-    
+    /**
+     * Aws constructor.
+     */
     function __construct()
     {
         $this->s3 = SDK::createClient('s3');
-        $this->ses = SDK::createClient('ses');
     }
 
+    /**
+     * @param $email
+     * @param $name
+     * @param $key
+     *
+     * @return mixed
+     */
     public function upload_key ($email, $name, $key) {
         $result = $this->s3->putObject([
             'Bucket' => getenv('AWS_S3_BUCKET'),
@@ -26,6 +35,10 @@ class Aws
         return $result;
     }
 
+    /**
+     * @param        $email
+     * @param string $name
+     */
     public function delete_key ($email, $name = 'default') {
         $this->s3->deleteObject([
             'Bucket' => getenv('AWS_S3_BUCKET'),
@@ -33,6 +46,11 @@ class Aws
         ]);
     }
 
+    /**
+     * @param $email
+     *
+     * @return mixed
+     */
     public function list_keys ($email) {
         $result = $this->s3->listObjects([
             'Bucket' => getenv('AWS_S3_BUCKET'),
@@ -41,6 +59,12 @@ class Aws
         return $result['Contents'];
     }
 
+    /**
+     * @param        $email
+     * @param string $name
+     *
+     * @return string
+     */
     public function lookup_key ($email, $name = 'default') {
         try {
             $result = $this->s3->getObject(array(
@@ -55,6 +79,11 @@ class Aws
         return (string) $result['Body'];
     }
 
+    /**
+     * @param $email
+     *
+     * @return array
+     */
     public function lookup_keys ($email) {
         $keys = $this->list_keys($email);
         if ($keys === NULL) {
@@ -66,13 +95,4 @@ class Aws
         }
         return $data;
     }
-
-    public function test() {
-        $path = storage_path('8192.pub');
-        $file = file_get_contents($path);
-        $result = $this->upload_key('a@c4.io', '8192', $file);
-        return $result;
-    }
-
-
 }
