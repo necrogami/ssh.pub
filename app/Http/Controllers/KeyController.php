@@ -39,7 +39,7 @@ class KeyController extends Controller
         $fileData = file_get_contents($request->file('key')->path());
         $fileData = trim($fileData);
         if (!in_array(substr($fileData, 0, 7), ['ssh-rsa', 'ssh-dss'], true)) {
-            return $fileData;
+            return "This is not a valid DSA or RSA Public SSH Key.\n";
         }
         $data['key'] = $fileData;
         $json_data = json_encode($data);
