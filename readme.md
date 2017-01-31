@@ -2,6 +2,10 @@
 
 This is a tool for managing public ssh keys. To make it easier to store, manage and install public ssh keys.
 
+This idea came from [Jeff Lindsay](github.com/progrium) and his [Keychain.io](github.com/progrium/keychain.io) Project. It ended a few years ago and i wanted to use it so i decided to rebuild it.
+
+In honor of the original project this will remain opensource. There will be more features to come but here's the basic usage.
+
 Bash
 ----
 Upload your default SSH key:
