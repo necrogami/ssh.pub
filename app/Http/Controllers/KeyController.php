@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Carbon\Carbon;
+use App\Key;
 
 class KeyController extends Controller
 {
@@ -19,8 +20,12 @@ class KeyController extends Controller
      * @return string
      */
     public function getIndex ($email, $keyname = 'default') {
-        $aws = new \App\Aws;
-        return (string) $aws->lookup_key($email, $keyname)['key'];
+        try {
+            $key = Storage::get(Key::path($email, $keyname));
+        } catch (FileNotFoundException $e) {
+            return 'Key Not Found';
+        }
+        return $key;
     }
 
     /**
@@ -31,22 +36,8 @@ class KeyController extends Controller
      * @return string
      */
     public function postIndex (Request $request, $email, $keyname = 'default') {
-        $token = Uuid::uuid4()->toString();
-        $data['action'] = 'upload_key';
-        $data['email'] = $email;
-        $data['keyname'] = $keyname;
-        $data['expires'] = Carbon::now()->addHour();
-        $fileData = file_get_contents($request->file('key')->path());
-        $fileData = trim($fileData);
-        if (!in_array(substr($fileData, 0, 7), ['ssh-rsa', 'ssh-dss'], true)) {
-            return "This is not a valid DSA or RSA Public SSH Key.\n";
-        }
-        $data['key'] = $fileData;
-        $json_data = json_encode($data);
-        Storage::put('keys/'.$token.'.json', $json_data);
-        $bob = new Confirm($data['action'], url('/key'), $email, $token);
-        $bob->subject('SSH.pub '.$data['action'].' Confirmation');
-        Mail::to($email)->send($bob);
+        $key = trim(file_get_contents($request->file('key')->path()));
+        Key::mail('upload_key', $email, $keyname, $key);
         return "Key received, check email to confirm upload.\n";
     }
 
@@ -57,16 +48,7 @@ class KeyController extends Controller
      * @return string
      */
     public function deleteIndex ($email, $keyname = 'default') {
-        $token = Uuid::uuid4()->toString();
-        $data['action'] = 'delete_key';
-        $data['email'] = $email;
-        $data['keyname'] = $keyname;
-        $data['expires'] = Carbon::now()->addHour();
-        $json_data = json_encode($data);
-        Storage::put('keys/'.$token.'.json', $json_data);
-        $bob = new Confirm($data['action'], url('/key'), $email, $token);
-        $bob->subject('SSH.pub '.$data['action'].' Confirmation');
-        Mail::to($email)->send($bob);
+        Key::mail('delete_key', $email, $keyname);
         return "Check your email to confirm key deletion.\n";
     }
 
@@ -88,8 +70,17 @@ class KeyController extends Controller
      * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
     public function getInstall ($email, $keyname = 'default') {
-        $aws = new \App\Aws;
-        $key = $aws->lookup_key($email, $keyname);
+        try {
+            $key = Storage::get(Key::path($email, $keyname));
+        } catch (FileNotFoundException $e) {
+            return 'echo "Key Not Found"';
+        }
+        $key = [
+            'key' => $key,
+            'keyname' => $keyname,
+            'email' => $email,
+            'url_root' => url('/key')
+        ];
         return view('install', ['keys' => [$key]]);
     }
 
@@ -97,9 +88,13 @@ class KeyController extends Controller
      * @param $email
      */
     public function getAll ($email) {
-        $aws = new \App\Aws;
-        foreach($aws->lookup_keys($email) as $key) {
-            echo $aws->lookup_key($email, $key)['key'];
+        $files = Storage::files(Key::path($email));
+        if (count($files) == 0) {
+            return "No keys found";
+        }
+
+        foreach($files as $keyname) {
+            echo Storage::get($keyname) . PHP_EOL;
         }
     }
 
@@ -109,12 +104,21 @@ class KeyController extends Controller
      * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
     public function getAllInstall ($email) {
-        $aws = new \App\Aws;
-        $keys = $aws->lookup_keys($email);
-        foreach ($keys as $key) {
-            $data[] = $aws->lookup_key($email, $key);
+        $files = Storage::files(Key::path($email));
+        if (count($files) == 0) {
+            return 'echo "No keys found"';
         }
-        return view('install', ['keys' => $data]);
+        foreach ($files as $keyname) {
+            $path = explode('/', $keyname);
+            $keyname = last($path);
+            $keys[] = [
+                'keyname' => $keyname,
+                'key' => Storage::get(Key::path($email, $keyname)),
+                'email' => $email,
+                'url_root' => url('/key')
+            ];
+        }
+        return view('install', ['keys' => $keys]);
     }
 
     /**
@@ -124,13 +128,18 @@ class KeyController extends Controller
      * @return mixed
      */
     public function getFingerprint ($email, $keyname = 'default') {
-        $aws = new \App\Aws;
-        $key = $aws->lookup_key($email, $keyname)['key'];
-        $cleanedKey = preg_replace('/^(ssh-[dr]s[as]\s+)|(\s+.+)|\n/', '', trim($key));
-        $buffer = base64_decode($cleanedKey);
-        $hash = md5($buffer);
+//        $aws = new \App\Aws;
+//        $key = $aws->lookup_key($email, $keyname)['key'];
+        try {
+            $key = Storage::get(Key::path($email, $keyname));
+            $cleanedKey = preg_replace('/^(ssh-[dr]s[as]\s+)|(\s+.+)|\n/', '', trim($key));
+            $buffer = base64_decode($cleanedKey);
+            $hash = md5($buffer);
 
-        return preg_replace('/(.{2})(?=.)/', '$1:', $hash);
+            return preg_replace('/(.{2})(?=.)/', '$1:', $hash);
+        } catch (FileNotFoundException $e) {
+            return 'Key Not Found';
+        }
     }
 
     /**
@@ -138,9 +147,8 @@ class KeyController extends Controller
      * @param $token
      */
     public function getConfirmToken ($email, $token) {
-        $aws = new \App\Aws;
         try {
-            $data = Storage::get('keys/'.$token.'.json');
+            $data = Storage::disk('local')->get('keys/'.$token.'.json');
         } catch (FileNotFoundException $e) {
             die('Token Expired');
         }
@@ -149,21 +157,21 @@ class KeyController extends Controller
             die('Email Mismatch');
         }
         if(!Carbon::now()->lt(Carbon::parse($data->expires->date))) {
-            Storage::delete('keys'.$token.'.json');
+            Storage::disk('local')->delete('keys'.$token.'.json');
             die('Token Expired');
         }
         switch ($data->action) {
             case 'upload_key':
-                $aws->upload_key($data->email, $data->keyname, $data->key);
+                Storage::put(Key::path($email, $data->keyname), $data->key);
                 break;
             case 'delete_key':
-                $aws->delete_key($data->email, $data->keyname);
+                Storage::delete(Key::path($email, $data->keyname));
                 break;
             default:
                 # code...
                 break;
         }
-        Storage::delete('keys/'.$token.'.json');
+        Storage::disk('local')->delete('keys/'.$token.'.json');
         echo 'Action Completed';
     }
 }
