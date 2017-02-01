@@ -132,8 +132,6 @@ class KeyController extends Controller
      * @return string
      */
     public function getFingerprint ($email, $keyname = 'default') {
-//        $aws = new \App\Aws;
-//        $key = $aws->lookup_key($email, $keyname)['key'];
         try {
             $key = Storage::get(Key::path($email, $keyname));
             $cleanedKey = preg_replace('/^(ssh-[dr]s[as]\s+)|(\s+.+)|\n/', '', trim($key));
