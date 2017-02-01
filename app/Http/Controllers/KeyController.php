@@ -3,14 +3,15 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Ramsey\Uuid\Uuid;
-use App\Mail\Confirm;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Carbon\Carbon;
 use App\Key;
 
+/**
+ * Class KeyController
+ * @package App\Http\Controllers
+ */
 class KeyController extends Controller
 {
     /**
@@ -67,7 +68,7 @@ class KeyController extends Controller
      * @param        $email
      * @param string $keyname
      *
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View|string
      */
     public function getInstall ($email, $keyname = 'default') {
         try {
@@ -86,27 +87,30 @@ class KeyController extends Controller
 
     /**
      * @param $email
+     *
+     * @return string
      */
     public function getAll ($email) {
         $files = Storage::files(Key::path($email));
         if (count($files) == 0) {
-            return "No keys found";
+            return "Keys Not Found";
         }
-
+        $data = "";
         foreach($files as $keyname) {
-            echo Storage::get($keyname) . PHP_EOL;
+            $data .= Storage::get($keyname) . PHP_EOL;
         }
+        return $data;
     }
 
     /**
      * @param $email
      *
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View|string
      */
     public function getAllInstall ($email) {
         $files = Storage::files(Key::path($email));
         if (count($files) == 0) {
-            return 'echo "No keys found"';
+            return 'echo "Keys Not Found"';
         }
         foreach ($files as $keyname) {
             $path = explode('/', $keyname);
@@ -125,7 +129,7 @@ class KeyController extends Controller
      * @param        $email
      * @param string $keyname
      *
-     * @return mixed
+     * @return string
      */
     public function getFingerprint ($email, $keyname = 'default') {
 //        $aws = new \App\Aws;
@@ -145,20 +149,22 @@ class KeyController extends Controller
     /**
      * @param $email
      * @param $token
+     *
+     * @return string
      */
     public function getConfirmToken ($email, $token) {
         try {
             $data = Storage::disk('local')->get('keys/'.$token.'.json');
         } catch (FileNotFoundException $e) {
-            die('Token Expired');
+            return 'Token Expired';
         }
         $data = json_decode($data);
         if ($email != $data->email) {
-            die('Email Mismatch');
+            return 'Email Mismatch';
         }
         if(!Carbon::now()->lt(Carbon::parse($data->expires->date))) {
             Storage::disk('local')->delete('keys'.$token.'.json');
-            die('Token Expired');
+            return 'Token Expired';
         }
         switch ($data->action) {
             case 'upload_key':
@@ -172,6 +178,6 @@ class KeyController extends Controller
                 break;
         }
         Storage::disk('local')->delete('keys/'.$token.'.json');
-        echo 'Action Completed';
+        return 'Action Completed';
     }
 }

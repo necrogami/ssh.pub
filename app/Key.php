@@ -9,13 +9,21 @@ use Ramsey\Uuid\Uuid;
 use App\Mail\Confirm;
 use Carbon\Carbon;
 
+
 /**
  * Class Key
  * @package App
  */
 class Key
 {
-
+    /**
+     * @param      $action
+     * @param      $email
+     * @param      $keyname
+     * @param null $key
+     *
+     * @return string|void
+     */
     static public function mail ($action, $email, $keyname, $key = NULL) {
         $token = Uuid::uuid4()->toString();
         $data['action'] = $action;
